@@ -58,14 +58,14 @@ Produce the "tech_stack" section as JSON:
   "infrastructure": {{"hosting": "...", "ci_cd": "..."}}
 }}""",
 
-    3: """Project: {idea}
+   3: """Given this project idea: {idea}
 Tech stack: {stage2}
 
-Produce the "architecture" section as JSON:
+Produce the "architecture" section as JSON. Do NOT use ASCII art or special characters in any field:
 {{
   "pattern": "string",
   "layers": ["string", ...],
-  "diagram": "string — ASCII or textual representation",
+  "diagram": "string — one sentence description only, no ASCII art",
   "description": "string — key architectural decisions"
 }}""",
 
@@ -143,13 +143,21 @@ Produce ALL THREE remaining sections as a single JSON object with keys
 def _extract_json(text: str) -> dict:
     """Strip markdown fences and parse JSON from model output."""
     text = text.strip()
-    # Remove ```json ... ``` or ``` ... ```
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
+    # Remove control characters that break JSON parsing (ASCII diagrams etc)
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
     try:
         return json.loads(text)
-    except json.JSONDecodeError as e:
-        raise GenerationError("json_parse", f"Invalid JSON from model: {e}\n\nRaw: {text[:500]}") from e
+    except json.JSONDecodeError:
+        # Fallback: extract JSON object from mixed output
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", match.group()))
+            except json.JSONDecodeError:
+                pass
+        raise GenerationError("json_parse", f"Invalid JSON from model.\n\nRaw: {text[:2000]}")
 
 
 class GenerationService:
@@ -171,8 +179,8 @@ class GenerationService:
             logger.info("Running stage %d/%d", n, 7)
             resp = await self._provider.generate(req)
             result = _extract_json(resp.content)
-            # Only keep first 500 chars of each stage result to limit context size
-            ctx[str(n)] = json.dumps(result)[:500]
+            # Only keep first 2000 chars of each stage result to limit context size
+            ctx[str(n)] = json.dumps(result)[:2000]
             if on_stage_complete:
                 await on_stage_complete(n, resp.content)
             return result

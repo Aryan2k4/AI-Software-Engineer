@@ -16,7 +16,7 @@ from app.core.exceptions import AIProviderError
 from app.providers.base import BaseAIProvider, GenerationRequest, GenerationResponse
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "gemma2-9b-it"
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 
 class GroqProvider(BaseAIProvider):
