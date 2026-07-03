@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — lint · typecheck · test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Pytest (mock provider, mock Supabase)
+        env:
+          AI_PROVIDER: mock
+          SUPABASE_URL: https://mock.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: mock-service-key
+          SUPABASE_ANON_KEY: mock-anon-key
+          SUPABASE_JWT_SECRET: mock-jwt-secret-32-chars-minimum!!
+          SECRET_KEY: ci-secret-key-32-chars-minimum!!
+          SENTRY_DSN: ""
+        run: |
+          PYTHONPATH=. pytest tests/ -v --no-cov
+
+  frontend:
+    name: Frontend — lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npx eslint src --ext ts,tsx --max-warnings 0
+
+      - name: TypeScript typecheck
+        run: npx tsc -b --noEmit
+
+      - name: Vitest
+        run: npx vitest run --config vitest.config.ts
+
+      - name: Production build
+        env:
+          VITE_SUPABASE_URL: https://mock.supabase.co
+          VITE_SUPABASE_ANON_KEY: mock-anon-key
+          VITE_API_BASE_URL: http://localhost:8000
+          VITE_SENTRY_DSN: ""
+        run: npm run build

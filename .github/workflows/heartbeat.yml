@@ -1,0 +1,21 @@
+name: Heartbeat — prevent Supabase free-tier pause
+
+on:
+  schedule:
+    # Every 6 days at 00:00 UTC
+    - cron: "0 0 */6 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping API health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health
+        env:
+          HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
+        run: |
+          curl -f "${HEARTBEAT_URL:-https://your-api.railway.app/health}" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5

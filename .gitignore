@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+coverage/
+.coverage
+htmlcov/
+.nyc_output/
+
+# Vite
+.vite/
+
+# Sentry
+.sentryclirc
+
+# Logs
+*.log
+logs/
+
+# Type generation
+frontend/src/types/api.types.ts.bak

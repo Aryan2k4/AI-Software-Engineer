@@ -1,0 +1,143 @@
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ExternalLink, Eye, Calendar } from "lucide-react";
+import { sharesApi } from "@/features/share/api";
+import { ResultPanel } from "@/features/blueprint/ResultPanel";
+import type { PublicBlueprintResponse, Blueprint, BlueprintSections } from "@/types/domain";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export function PublicSharePage() {
+  const { token } = useParams<{ token: string }>();
+  const [data, setData] = useState<PublicBlueprintResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    sharesApi
+      .getPublic(token)
+      .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : "Not found"))
+      .finally(() => setIsLoading(false));
+  }, [token]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+        <div className="w-6 h-6 border-2 border-[var(--accent-teal)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)] p-8">
+        <div className="surface-elevated max-w-sm w-full p-8 text-center space-y-3">
+          <p className="text-4xl">🔒</p>
+          <h1 className="text-lg font-semibold text-[var(--text-primary)]">Blueprint not found</h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            {error ?? "This share link may have expired or been revoked."}
+          </p>
+          <Link
+            to="/"
+            className="inline-block mt-2 text-sm text-[var(--accent-teal)] hover:underline"
+          >
+            Go to AI Software Engineer →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Adapt PublicBlueprintResponse to Blueprint shape for ResultPanel
+  const blueprint: Blueprint = {
+    id: data.share_token,
+    project_id: "",
+    user_id: "",
+    original_idea: data.original_idea,
+    sections: data.sections as BlueprintSections,
+    version: "1.1",
+    created_at: data.created_at,
+    updated_at: data.created_at,
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-base)]">
+      {/* Header */}
+      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-[var(--accent-teal)]/10 flex items-center justify-center">
+              <span className="text-[var(--accent-teal)] text-sm font-bold">⚡</span>
+            </div>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">
+              AI Software Engineer
+            </span>
+          </div>
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 text-xs text-[var(--accent-teal)] hover:underline"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Create your own
+          </Link>
+        </div>
+      </header>
+
+      {/* Blueprint header */}
+      <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-2"
+          >
+            <h1 className="text-xl font-bold text-[var(--text-primary)]">{data.project_name}</h1>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-2xl">
+              {data.original_idea}
+            </p>
+            <div className="flex items-center gap-4 pt-1">
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                <Calendar className="w-3.5 h-3.5" />
+                {formatDate(data.created_at)}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                <Eye className="w-3.5 h-3.5" />
+                Public blueprint
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Blueprint content */}
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <ResultPanel blueprint={blueprint} />
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[var(--border-subtle)] mt-16">
+        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
+          <p className="text-xs text-[var(--text-muted)]">
+            Generated by AI Software Engineer · AG-ASE-2026
+          </p>
+          <Link
+            to="/"
+            className="text-xs text-[var(--accent-teal)] hover:underline"
+          >
+            Build your own blueprint →
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
+}

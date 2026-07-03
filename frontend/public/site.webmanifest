@@ -1,0 +1,16 @@
+{
+  "name": "AI Software Engineer",
+  "short_name": "AI SWE",
+  "description": "Transform a one-sentence idea into a complete engineering blueprint.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0b0d",
+  "theme_color": "#2DD4BF",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
