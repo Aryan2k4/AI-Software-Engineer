@@ -26,7 +26,7 @@ One-sentence idea
   └──────────────────────────────────────────────┘
        │
        ▼
-  9-Section Engineering Blueprint
+  9-Section Engineering Blueprint.
 ```
 
 ## Stack
