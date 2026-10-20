@@ -1,0 +1,1 @@
+{"name":"ai-software-engineer","private":true,"scripts":{"dev":"npm --prefix web run dev","build":"npm --prefix web run build","test":"npm --prefix web test"}}

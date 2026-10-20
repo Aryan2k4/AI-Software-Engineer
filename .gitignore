@@ -7,6 +7,11 @@ __pycache__/
 *.pyo
 
 # Build outputs
+.next/
+.vercel/
+*.tsbuildinfo
+test-results/
+playwright-report/
 dist/
 build/
 *.egg-info/

@@ -1,5 +1,11 @@
 # AI Software Engineer — AG-ASE-2026
 
+## Next.js rebuild (v3)
+
+The new application is in **[web/](./web/README.md)**. Start it with `cd web`, `npm ci`, and `npm run dev`. It includes functional project navigation, saved demo workspaces, artifact inspection, task boards, context history, NextAuth, Prisma/PostgreSQL routes, and server model integration. See its README for verified capabilities and remaining limitations. The GitHub Pages URL still hosts the earlier application; deploying v3 requires a Next.js server host.
+
+The documentation below describes the earlier implementation.
+
 > A local-first autonomous engineering workspace. It turns product intent into an architecture, implementation plan, tests, and a reviewable delivery record through a seven-stage agent pipeline.
 
 [![CI](https://github.com/your-org/ai-software-engineer/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/ai-software-engineer/actions/workflows/ci.yml)
