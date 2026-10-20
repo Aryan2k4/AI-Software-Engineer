@@ -19,6 +19,7 @@ const files = ["app", "  api", "    agents", "    projects", "  core", "  servic
 export function CommandCenterPage() {
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
+  const [plan, setPlan] = useState<{ name: string; idea: string } | null>(null);
   const [runs, setRuns] = useState<Run[]>([
     { name: "identity-service", status: "passed", time: "12m ago" },
     { name: "billing-console", status: "passed", time: "47m ago" },
@@ -43,9 +44,11 @@ export function CommandCenterPage() {
     if (!prompt.trim()) return;
     setIsRunning(true);
     const name = prompt.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 24) || "new-spec";
+    const idea = prompt.trim();
     setRuns((old) => [{ name, status: "running", time: "now" }, ...old]);
     window.setTimeout(() => {
       setRuns((old) => old.map((item, index) => index === 0 ? { ...item, status: "passed" } : item));
+      setPlan({ name, idea });
       setIsRunning(false);
       setPrompt("");
     }, 1800);
@@ -92,6 +95,13 @@ export function CommandCenterPage() {
           <div className="intent-bottom"><span>PRIVATE BY DEFAULT · <b>STAYS ON YOUR MACHINE</b></span><button onClick={launchRun} disabled={!prompt.trim() || isRunning}>{isRunning ? <><Cpu className="spin" size={16} /> PUTTING IT TOGETHER</> : <><Play size={16} fill="currentColor" /> MAKE A PLAN</>}</button></div>
         </section>
 
+        {plan && <section id="plan-output" className="plan-output">
+          <div className="plan-kicker"><span>✓ FIRST PASS READY</span><button onClick={() => navigator.clipboard?.writeText(`${plan.name}\n\n${plan.idea}`)}>COPY NOTES</button></div>
+          <div className="plan-head"><div><p className="eyebrow">// YOUR NEW PROJECT</p><h2>{plan.name.replace(/-/g, " ")}</h2></div><button className="outline-button" onClick={() => document.getElementById("project-idea")?.focus()}>REFINE THE IDEA <ArrowUpRight size={15} /></button></div>
+          <p className="plan-idea">“{plan.idea}”</p>
+          <div className="plan-steps"><article><b>01 / SHAPE IT</b><h3>Write the smallest useful version</h3><p>List one person who needs it, their first action, and what “done” looks like.</p></article><article><b>02 / MAKE IT</b><h3>Build a thin, honest slice</h3><p>Start with the flow that proves the idea works before adding the nice-to-haves.</p></article><article><b>03 / CHECK IT</b><h3>Give it a real-world test</h3><p>Use it once end-to-end. Keep what helped; cut what only looked impressive.</p></article></div>
+        </section>}
+
         <div className="console-grid">
           <section className="brutal-panel activity-panel"><div className="panel-heading"><span>WHAT'S HAPPENING</span><span className="live-dot">NOW</span></div>
             <div className="activity-list">{activity.map(([number, agent, copy, state]) => <div className="activity-row" key={number}><b>{number}</b><div className={`status-mark ${state}`} /> <div><strong>{agent}</strong><p>{copy}</p></div><ChevronRight size={16} /></div>)}</div>
@@ -99,7 +109,7 @@ export function CommandCenterPage() {
           <section className="brutal-panel code-panel"><div className="panel-heading"><span>THE FOLDER YOU'RE IN</span><FileCode2 size={16} /></div><div className="code-layout"><pre>{files.map((f, i) => <div key={i} className={f.trim() === "services" ? "selected-file" : ""}>{f}</div>)}</pre><div className="code-preview"><p><i>01</i> <b>class</b> ProjectNotebook:</p><p><i>02</i> &nbsp;&nbsp;<b>async def</b> make_a_plan(idea):</p><p><i>03</i> &nbsp;&nbsp;&nbsp;&nbsp;notes = await clarify(idea)</p><p><i>04</i> &nbsp;&nbsp;&nbsp;&nbsp;<b>return</b> build_with_care(notes)</p><p><i>05</i></p><p><i>06</i> <span># Small, useful, yours.</span></p></div></div></section>
         </div>
 
-        <section id="recent-work" className="run-section"><div className="section-title"><span>THINGS YOU'VE BEEN MAKING</span><button onClick={() => document.getElementById("project-idea")?.focus()}>START ANOTHER <ArrowUpRight size={14} /></button></div><div className="runs-grid">{runs.map((run) => <article className="run-card" key={`${run.name}-${run.time}`}><div className="run-card-top"><span className={`run-status ${run.status}`}><CircleDot size={14} /> {run.status === "passed" ? "GOOD TO GO" : run.status === "running" ? "IN PROGRESS" : "SAVED IDEA"}</span><span>{run.time}</span></div><h3>{run.name}</h3><p>Think it through → make it → check it</p><div className="run-footer"><GitPullRequest size={15} /> 4 useful notes <ArrowUpRight size={15} /></div></article>)}</div></section>
+        <section id="recent-work" className="run-section"><div className="section-title"><span>THINGS YOU'VE BEEN MAKING</span><button onClick={() => document.getElementById("project-idea")?.focus()}>START ANOTHER <ArrowUpRight size={14} /></button></div><div className="runs-grid">{runs.map((run) => <article className="run-card" onClick={() => run.status === "passed" && document.getElementById("plan-output")?.scrollIntoView({ behavior: "smooth" })} key={`${run.name}-${run.time}`}><div className="run-card-top"><span className={`run-status ${run.status}`}><CircleDot size={14} /> {run.status === "passed" ? "GOOD TO GO" : run.status === "running" ? "IN PROGRESS" : "SAVED IDEA"}</span><span>{run.time}</span></div><h3>{run.name}</h3><p>Think it through → make it → check it</p><div className="run-footer"><GitPullRequest size={15} /> 4 useful notes <ArrowUpRight size={15} /></div></article>)}</div></section>
       </main>
 
       <footer className="command-footer"><span>THE WORKBENCH / v2.0.0</span><span>DESIGNED WITH ROOM TO THINK</span><span><Server size={13} /> ALL GOOD HERE</span></footer>
