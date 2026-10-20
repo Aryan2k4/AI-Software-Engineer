@@ -28,5 +28,8 @@ def get_ai_provider() -> BaseAIProvider:
     elif provider_name == "openrouter":
         from app.providers.openrouter.provider import OpenRouterProvider
         return OpenRouterProvider()
+    elif provider_name == "ollama":
+        from app.providers.ollama.provider import OllamaProvider
+        return OllamaProvider()
     else:
         raise AppError(f"Unknown AI provider: '{provider_name}'", "CONFIG_ERROR")

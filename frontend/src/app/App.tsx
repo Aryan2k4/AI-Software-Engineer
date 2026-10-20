@@ -27,6 +27,9 @@ const ExportCenterPage = lazy(() =>
 const PublicSharePage = lazy(() =>
   import("@/pages/PublicSharePage").then((m) => ({ default: m.PublicSharePage }))
 );
+const CommandCenterPage = lazy(() =>
+  import("@/pages/CommandCenterPage").then((m) => ({ default: m.CommandCenterPage }))
+);
 
 // ── Suspense fallback ──────────────────────────────────────────────────────
 function PageLoader() {
@@ -83,8 +86,8 @@ export default function App() {
               />
 
               {/* Default */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<CommandCenterPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </AuthProvider>

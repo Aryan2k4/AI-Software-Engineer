@@ -8,7 +8,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - AI_PROVIDER=${AI_PROVIDER:-gemini}
+      - AI_PROVIDER=${AI_PROVIDER:-mock}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}

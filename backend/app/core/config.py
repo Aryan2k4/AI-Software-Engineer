@@ -12,11 +12,13 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173"
 
     # AI Provider
-    ai_provider: str = "gemini"
+    ai_provider: str = "mock"
     gemini_api_key: str = ""
     groq_api_key: str = ""
     grok_api_key: str = ""
     openrouter_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5-coder:7b"
 
     # Supabase
     supabase_url: str = ""
