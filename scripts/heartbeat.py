@@ -9,8 +9,8 @@ Or as a GitHub Actions scheduled workflow (see .github/workflows/heartbeat.yml).
 """
 import os
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 
 API_URL = os.getenv("HEARTBEAT_URL", "http://localhost:8000/health")
 
