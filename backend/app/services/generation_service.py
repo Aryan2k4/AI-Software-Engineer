@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Awaitable, Callable
-from unittest import result
 
 from app.core.exceptions import GenerationError
 from app.core.logging import get_logger
@@ -149,7 +148,7 @@ def _extract_json(text: str) -> dict:
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
         # Fallback: extract JSON object from mixed output
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
@@ -157,7 +156,7 @@ def _extract_json(text: str) -> dict:
                 return json.loads(re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", match.group()))
             except json.JSONDecodeError:
                 pass
-        raise GenerationError("json_parse", f"Invalid JSON from model.\n\nRaw: {text[:2000]}")
+        raise GenerationError("json_parse", f"Invalid JSON from model.\n\nRaw: {text[:2000]}") from exc
 
 
 class GenerationService:

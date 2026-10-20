@@ -42,12 +42,14 @@ class OllamaProvider(BaseAIProvider):
         )
 
     async def stream(self, request: GenerationRequest) -> AsyncIterator[str]:
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            async with client.stream("POST", f"{self._base_url}/api/generate", json=self._payload(request, True)) as response:
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if line:
-                        yield httpx.Response(200, content=line).json().get("response", "")
+        async with (
+            httpx.AsyncClient(timeout=180.0) as client,
+            client.stream("POST", f"{self._base_url}/api/generate", json=self._payload(request, True)) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line:
+                    yield httpx.Response(200, content=line).json().get("response", "")
 
     async def health_check(self) -> bool:
         try:
