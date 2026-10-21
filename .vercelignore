@@ -1,0 +1,9 @@
+backend/
+frontend/
+database/
+web/.agents/
+web/skills-lock.json
+**/.env*
+**/node_modules/
+**/test-results/
+**/playwright-report/

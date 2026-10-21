@@ -1,1 +1,0 @@
-"""Local Ollama provider implementation."""

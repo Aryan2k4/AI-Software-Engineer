@@ -1,4 +1,6 @@
 # Dependencies
+.agents/
+skills-lock.json
 node_modules/
 .venv/
 venv/

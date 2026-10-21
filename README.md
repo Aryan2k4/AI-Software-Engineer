@@ -1,101 +1,83 @@
-# AI Software Engineer — AG-ASE-2026
+# AI Software Engineer
 
-## Next.js rebuild (v3)
+A neo-brutalist engineering workspace built with Next.js, TypeScript, Prisma and PostgreSQL. Organize feature requests, generate code artifacts, inspect changes, and retain project context in light or dark mode.
 
-The new application is in **[web/](./web/README.md)**. Start it with `cd web`, `npm ci`, and `npm run dev`. It includes functional project navigation, saved demo workspaces, artifact inspection, task boards, context history, NextAuth, Prisma/PostgreSQL routes, and server model integration. See its README for verified capabilities and remaining limitations. The GitHub Pages URL still hosts the earlier application; deploying v3 requires a Next.js server host.
+[Live workspace](https://ai-software-engineer-rho.vercel.app)
 
-The documentation below describes the earlier implementation.
+## Features
 
-> A local-first autonomous engineering workspace. It turns product intent into an architecture, implementation plan, tests, and a reviewable delivery record through a seven-stage agent pipeline.
+- Project dashboard and distinct project workspaces.
+- GitHub sign-in through NextAuth; account-scoped PostgreSQL persistence with optimistic revision checks.
+- Task board, file explorer, downloads, change explanations, saved context and run history.
+- Server-side OpenAI or Ollama generation with bounded, schema-validated inputs and outputs.
+- Explicitly labeled browser-local demo when live generation is unavailable.
 
-[![CI](https://github.com/your-org/ai-software-engineer/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/ai-software-engineer/actions/workflows/ci.yml)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green)](https://fastapi.tiangolo.com/)
+Production uses Neon (managed PostgreSQL) and Vercel. Supabase is not a dependency. Data in the previous Supabase service is not automatically migrated or deleted.
 
-## Architecture
+## Honest boundaries
 
-```
-One-sentence idea
-       │
-       ▼
-  7-Stage Agent Pipeline
-       │
-  ┌────▼─────────────────────────────────────────┐
-  │  1. Idea Clarification                        │
-  │  2. Tech Stack Selection                      │
-  │  3. Architecture Design                       │
-  │  4. Database Schema                           │
-  │  5. API Design                                │
-  │  6. Implementation Roadmap                    │
-  │  7. Security & Deployment                     │
-  └──────────────────────────────────────────────┘
-       │
-       ▼
-  9-Section Engineering Blueprint.
-```
+Generation uses one model request followed by artifact validation. The timeline is not independent autonomous workers. Checks validate artifact structure, not generated program correctness. This version does **not** execute generated code, run its tests, synchronize repositories, or deploy generated applications. Live AI generation requires a configured provider and authenticated account; database setup alone does not enable it.
 
-## Stack
+## Local setup
 
-| Layer      | Technology                              |
-|------------|-----------------------------------------|
-| Frontend   | React 18 · TypeScript 5 · Vite · Tailwind CSS · Framer Motion |
-| Backend    | FastAPI · Python 3.12 · Pydantic v2     |
-| Database   | Supabase (PostgreSQL · Auth · Realtime · Storage) |
-| AI         | Ollama (local / free) · Mock (default) · Gemini · Groq · Grok · OpenRouter |
-| Testing    | Vitest · pytest · Testing Library       |
+Use Node.js 22+ and Docker for local PostgreSQL.
 
-## Quick Start
-
-```bash
-# 1. Clone
-git clone https://github.com/your-org/ai-software-engineer
-cd ai-software-engineer
-
-# 2. Backend — works without API keys in deterministic demo mode
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # optional: set AI_PROVIDER=ollama for local inference
-uvicorn app.main:app --reload
-
-# 3. Frontend
-cd ../frontend
-npm install
-cp .env.example .env   # fill in keys
+```sh
+cd web
+npm ci
+cp .env.example .env
+cd ..
+docker compose up -d db
+cd web
+npm run db:push
 npm run dev
 ```
 
-## Documentation
+On PowerShell, use `Copy-Item .env.example .env`. Open http://localhost:3000. Without credentials, use the labeled local demo.
 
-- [Architecture Decision Records](./docs/adr/)
-- [API Documentation](./docs/api/)
-- [Database Schema](./database/schema.md)
-- [Blueprint v1.1 Spec](./docs/architecture/blueprint-v1.1.md)
+For account mode configure `DATABASE_URL`, `GITHUB_ID`, `GITHUB_SECRET`, `NEXTAUTH_SECRET` and `NEXTAUTH_URL`. Register a GitHub OAuth app with callback `http://localhost:3000/api/auth/callback/github`. Use a cryptographically random secret; never commit credentials.
 
-## Local AI (free)
+For live generation set `OPENAI_API_KEY` and optionally `OPENAI_MODEL`. Alternatively set `AI_PROVIDER=ollama`, `OLLAMA_BASE_URL` and `OLLAMA_MODEL` to a server reachable from Next.js. Localhost on Vercel is not your laptop. Model inference and hosting may incur charges even with a free-tier database.
 
-Install [Ollama](https://ollama.com), then run `ollama pull qwen2.5-coder:7b`.
-Set `AI_PROVIDER=ollama`, `OLLAMA_BASE_URL=http://localhost:11434`, and
-`OLLAMA_MODEL=qwen2.5-coder:7b` in `backend/.env`. The API calls Ollama only
-from the server; model traffic and credentials never reach the browser.
+## Vercel deployment
 
-## Portfolio highlights
+1. Import this repository with **Root Directory: web** and the Next.js preset.
+2. Connect Neon PostgreSQL and supply `DATABASE_URL`.
+3. Apply the Prisma schema from web using `npm run db:push` against the intended database. Review changes before applying to existing data; adopt versioned migrations for future production schema evolution.
+4. Add the authentication and model variables above to Production.
+5. Set `NEXTAUTH_URL` to the public URL and the GitHub callback to `<public-url>/api/auth/callback/github`.
+6. Redeploy after changing environment variables. Sign in, save context, reload, and verify persistence. Submit a small request to verify model credentials.
 
-- Provider-agnostic agent pipeline with a local, no-cost inference path
-- Brutalist operator console with interactive demo orchestration
-- Server-side FastAPI services, persistent projects, blueprint sharing, and export workflows
-- Docker-ready development flow with isolated frontend and backend services
+The `/api/config` endpoint reports configured modes, not end-to-end credential health. GitHub Pages cannot host these server routes.
 
-## Sprint Status
+## Docker
 
-| Sprint | Description                    | Status      |
-|--------|--------------------------------|-------------|
-| S0     | Repository bootstrap           | ✅ Complete |
-| S1     | Auth + Supabase integration    | ✅ Complete |
-| S2     | AI pipeline foundation         | ✅ Complete |
-| S3     | Blueprint generation UI        | ✅ Complete |
-| S4     | Blueprint rendering            | ✅ Complete |
-| S5     | Projects dashboard             | ✅ Complete |
-| S6     | Exports + Sharing              | ✅ Complete |
-| S7     | Error boundaries · Sentry · Code splitting · Onboarding | 🔄 In Progress |
+The root `docker-compose.yml` runs PostgreSQL and standalone Next.js. Create web/.env, start the database and apply the schema as above, then run `docker compose up --build web`. Runtime startup does not automatically apply schema changes. Default database credentials are local-development only.
+
+## Verification
+
+From web:
+
+```sh
+npm test
+npm run build
+npx playwright install chromium
+npx playwright test
+```
+
+GitHub Actions runs domain tests, production compilation/type checks and browser tests. Browser coverage includes navigation, local generation, task/context persistence and anonymous API denial; it does not validate production OAuth or model credentials.
+
+## Structure
+
+- `web/app`: application entry points and authenticated API routes.
+- `web/components`: workspace and customized UI primitives.
+- `web/lib`: domain validation, auth, database and request helpers.
+- `web/prisma`: PostgreSQL schema.
+- `web/tests`: domain and browser tests.
+- `.github/workflows/next-workspace.yml`: CI.
+
+Obsolete Vite/FastAPI sources, Supabase schema, old workflows and design notes were removed. They remain recoverable in Git history.
+
+## Remaining work
+
+Isolated code execution, real generated-code tests, durable rate-limited jobs, normalized run persistence, incremental diffs, repository synchronization and deployment integrations. Present this as an AI-assisted engineering workspace, not a completed autonomous software engineer.
