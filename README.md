@@ -73,6 +73,22 @@ The `/api/config` endpoint reports configured modes, not end-to-end credential h
 
 ## Docker
 
+### Restricted local test runner
+
+The operator-only runner supports dependency-free Node tests in `tests/*.test.mjs`, `test/*.test.cjs`, or equivalent nested `.js` test paths. It is not yet connected to the hosted application's job queue or UI. Do not expose this CLI as a public execution service.
+
+From `web`, pull a Node image and pin its digest, then run an artifact JSON file containing `{ "files": [{ "path": "tests/example.test.mjs", "content": "..." }] }`:
+
+```powershell
+docker pull node:22-alpine
+$env:RUNNER_IMAGE = docker image inspect node:22-alpine --format '{{index .RepoDigests 0}}'
+npm run runner -- artifacts.json
+# Includes real Docker integration tests when RUNNER_IMAGE is set:
+npm test
+```
+
+Each run uses a unique temporary directory and container; only those resources are cleaned up. No host secrets or Docker socket are mounted. The generated program runs non-root with network disabled, a read-only filesystem, 256 MB memory, one CPU, 64 PIDs, a 30-second limit and bounded captured logs. No dependencies are installed. Container isolation is defense-in-depth, not a guarantee against hostile public code. Use a dedicated VM for untrusted workloads.
+
 The root `docker-compose.yml` runs PostgreSQL and standalone Next.js. Create web/.env, start the database and apply the schema as above, then run `docker compose up --build web`. Runtime startup does not automatically apply schema changes. Default database credentials are local-development only.
 
 ## Verification
