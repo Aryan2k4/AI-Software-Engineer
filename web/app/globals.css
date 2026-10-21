@@ -1011,3 +1011,7 @@ select {
     scroll-behavior: auto !important;
   }
 }
+.getting-started { margin-top: 24px; }
+.getting-started ol { padding-left: 24px; }
+.getting-started li { margin: 14px 0; line-height: 1.7; }
+.getting-started .btn { white-space: normal; }

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "./ui/button";
+import { ProjectAssistant } from "./project-assistant";
 import {
   applyRun,
   checkArtifacts,
@@ -34,7 +35,14 @@ import {
   type Run,
 } from "@/lib/domain";
 type View =
-  "overview" | "runs" | "files" | "changes" | "board" | "context" | "settings";
+  | "overview"
+  | "runs"
+  | "files"
+  | "changes"
+  | "board"
+  | "context"
+  | "settings"
+  | "assistant";
 type Config = {
   auth: boolean;
   signedIn: boolean;
@@ -48,10 +56,12 @@ const nav = [
   ["changes", "Changes", GitBranch],
   ["board", "Task board", Columns3],
   ["context", "Project context", Terminal],
+  ["assistant", "Assistant", Terminal],
   ["settings", "Settings", Settings],
 ] as const;
 const storageKey = "ase-workspace-v3";
 export default function Workbench() {
+  const [guide, setGuide] = useState(false);
   const [data, setData] = useState<Workspace>({ projects: [] }),
     [ready, setReady] = useState(false),
     [config, setConfig] = useState<Config>({
@@ -109,6 +119,7 @@ export default function Workbench() {
         if (!active) return;
         setData(workspace);
         setTheme(localStorage.getItem("ase-theme") ?? "dark");
+        setGuide(localStorage.getItem("ase-guide-v1") !== "dismissed");
         loaded.current = true;
         setReady(true);
       } catch (e) {
@@ -286,6 +297,9 @@ export default function Workbench() {
         </a>
         <span className="edition">WORKSPACE / VOL. 03</span>
         <div className="top-actions">
+          <Button variant="outline" onClick={() => setGuide(true)}>
+            Help
+          </Button>
           <span className="mode-label">
             {config.signedIn ? "CONNECTED WORKSPACE" : "LOCAL DEMO"}
           </span>
@@ -359,6 +373,104 @@ export default function Workbench() {
         </div>
       </aside>
       <main className="main">
+        {ready && guide && (
+          <section
+            className="panel getting-started"
+            aria-label="Getting started"
+          >
+            <div className="panel-top">
+              <h2>Start here. Build one useful thing.</h2>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setGuide(false);
+                  localStorage.setItem("ase-guide-v1", "dismissed");
+                }}
+              >
+                Dismiss guide
+              </Button>
+            </div>
+            <p>
+              Live mode uses your account and Groq. Local demo uses templates
+              saved in this browser. Neither mode currently executes generated
+              tests or deploys your code.
+            </p>
+            <ol>
+              <li>
+                <b>Create or open a project.</b> Give it a clear name.{" "}
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate("overview", "")}
+                >
+                  Open projects
+                </Button>
+              </li>
+              <li>
+                <b>Set the context.</b> Describe your stack, constraints and
+                acceptance criteria.{" "}
+                <Button
+                  variant="ghost"
+                  disabled={!project}
+                  onClick={() => navigate("context")}
+                >
+                  Open project context
+                </Button>
+              </li>
+              <li>
+                <b>Request a small feature.</b> Example: “Create a
+                dependency-free JavaScript email validator with node:test
+                tests.”{" "}
+                <Button
+                  variant="ghost"
+                  disabled={!project}
+                  onClick={() => navigate("overview")}
+                >
+                  Open feature composer
+                </Button>
+              </li>
+              <li>
+                <b>Inspect the result.</b> Read the run review, then inspect
+                files and proposed changes. Structural checks do not mean
+                application tests passed.{" "}
+                <Button
+                  variant="ghost"
+                  disabled={!project}
+                  onClick={() => navigate("files")}
+                >
+                  Inspect files
+                </Button>
+              </li>
+              <li>
+                <b>Track your work.</b> Move tasks as you finish them. Download
+                and review code before running it in an isolated environment.
+                Never run unfamiliar generated code with secrets available.{" "}
+                <Button
+                  variant="ghost"
+                  disabled={!project}
+                  onClick={() => navigate("board")}
+                >
+                  Open task board
+                </Button>
+              </li>
+              <li>
+                <b>Ask for help.</b> The assistant explains code and next steps;
+                it cannot execute or deploy.{" "}
+                <Button
+                  variant="ghost"
+                  disabled={!project}
+                  onClick={() => navigate("assistant")}
+                >
+                  Ask the assistant
+                </Button>
+              </li>
+            </ol>
+            <p className="muted">
+              Project actions unlock after you open a project. Reopen this guide
+              anytime using Help. Never paste passwords or API keys into
+              prompts.
+            </p>
+          </section>
+        )}
         <div className="breadcrumb">
           <span>Workspace</span>
           <span>/</span>
@@ -972,6 +1084,54 @@ export default function Workbench() {
                     ),
                   )}
                 </div>
+              </>
+            )}
+            {view === "assistant" && (
+              <>
+                <ProjectAssistant
+                  key={project.id}
+                  project={project}
+                  enabled={config.signedIn && config.provider === "groq"}
+                  onReply={(question, reply) => {
+                    const latest = dataRef.current.projects.find(
+                      (p) => p.id === project.id,
+                    );
+                    if (!latest) return;
+                    const at = new Date().toISOString();
+                    update({
+                      ...latest,
+                      messages: [
+                        ...latest.messages,
+                        {
+                          id: crypto.randomUUID(),
+                          role: "user" as const,
+                          text: question,
+                          at,
+                        },
+                        {
+                          id: crypto.randomUUID(),
+                          role: "assistant" as const,
+                          text: reply,
+                          at,
+                        },
+                      ].slice(-100),
+                    });
+                  }}
+                />
+                <section className="panel">
+                  <h2>Project conversation</h2>
+                  {project.messages.map((m) => (
+                    <article className={`message ${m.role}`} key={m.id}>
+                      <span className="micro">
+                        {m.role === "user" ? "YOU" : "ENGINEER"}
+                      </span>
+                      <p className="prose-pre">{m.text}</p>
+                    </article>
+                  ))}
+                  {!project.messages.length && (
+                    <p>No messages yet. Ask your first question above.</p>
+                  )}
+                </section>
               </>
             )}
             {view === "context" && (

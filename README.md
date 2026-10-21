@@ -11,6 +11,19 @@ A neo-brutalist engineering workspace built with Next.js, TypeScript, Prisma and
 - Task board, file explorer, downloads, change explanations, saved context and run history.
 - Server-side Groq, OpenAI or Ollama generation with bounded, schema-validated inputs and outputs.
 - Explicitly labeled browser-local demo when live generation is unavailable.
+- First-visit guide with real navigation actions; dismiss it and reopen using Help.
+- Project-aware Groq assistant with saved conversation history. Open a project and select Assistant to ask questions about code or next steps.
+
+## First-time walkthrough
+
+1. Sign in with GitHub for account persistence, or explore the clearly labeled local demo.
+2. Create/open a project, then save your stack and constraints in Project context.
+3. Request one small feature from Overview. Inspect the specification and review under Agent runs.
+4. Read generated files in Repository and proposed changes in Changes. Structural checks are not executed tests.
+5. Move tasks on the Task board as you complete them. Review downloaded code before executing it in an isolated environment.
+6. Open Assistant for explanations. It sends the question, saved context, eight recent message excerpts and up to five file excerpts to Groq. It does not execute code, edit files or deploy. Never submit secrets.
+
+Assistant conversations use the existing project message storage. Live chat requires sign-in and a configured Groq provider; there are no fabricated demo chat responses. No production per-user quota enforcement exists yet, so restrict account access before sharing a provider-funded deployment widely.
 
 Production uses Neon (managed PostgreSQL) and Vercel. Supabase is not a dependency. Data in the previous Supabase service is not automatically migrated or deleted.
 

@@ -1,5 +1,71 @@
 import { test, expect } from "@playwright/test";
 import { seed, demoOutput } from "../lib/domain";
+test("first visit guide dismisses persistently and Help reopens it", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("region", { name: "Getting started" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Dismiss guide" }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("region", { name: "Getting started" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Help", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Getting started" }),
+  ).toBeVisible();
+});
+test("assistant replies persist in the project conversation", async ({
+  page,
+}) => {
+  let saved = seed();
+  await page.route("**/api/config", (r) =>
+    r.fulfill({
+      json: {
+        auth: true,
+        signedIn: true,
+        provider: "groq",
+        storage: "postgres",
+      },
+    }),
+  );
+  await page.route("**/api/workspace", async (r) => {
+    if (r.request().method() === "PUT") {
+      saved = r.request().postDataJSON().data;
+      await r.fulfill({ json: { revision: 1 } });
+    } else await r.fulfill({ json: { data: saved, revision: 0 } });
+  });
+  await page.route("**/api/chat", (r) =>
+    r.fulfill({
+      json: {
+        reply: "Inspect boundary cases before executing the generated tests.",
+      },
+    }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: /PROJECT \/ 01/ }).click();
+  await page.getByRole("button", { name: "Assistant", exact: true }).click();
+  await page
+    .getByLabel("Your question")
+    .fill("How should I verify this feature?");
+  await page.getByRole("button", { name: "Send to assistant" }).click();
+  await expect(
+    page.getByText(
+      "Inspect boundary cases before executing the generated tests.",
+    ),
+  ).toBeVisible();
+  await expect
+    .poll(() => saved.projects[0].messages.at(-1)?.text)
+    .toBe("Inspect boundary cases before executing the generated tests.");
+  await page.reload();
+  await expect(
+    page.getByText(
+      "Inspect boundary cases before executing the generated tests.",
+    ),
+  ).toBeVisible();
+});
 for (const succeeds of [true, false]) {
   test(`Groq live ${succeeds ? "success persists artifacts" : "quota failure does not create demo run"}`, async ({
     page,
@@ -120,6 +186,9 @@ test("anonymous users cannot access account data or live inference", async ({
   request,
 }) => {
   expect((await request.get("/api/workspace")).status()).toBe(401);
+  expect(
+    (await request.post("/api/chat", { data: { question: "Hello" } })).status(),
+  ).toBe(401);
   expect(
     (
       await request.post("/api/run", { data: { prompt: "Create a project" } })
