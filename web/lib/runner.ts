@@ -89,6 +89,14 @@ export async function runNodeTests(
   const timeout = options.timeoutMs ?? 30000;
   if (!Number.isInteger(timeout) || timeout < 100 || timeout > 30000)
     throw new Error("Timeout must be 100–30000 ms.");
+  const engine = await command(["info", "--format", "{{.ServerVersion}}"], 5000);
+  if (engine.code !== 0 || engine.timedOut)
+    return {
+      status: "unavailable",
+      exitCode: null,
+      log: "Docker engine is unavailable. Start Docker Desktop and retry with a new run.",
+      durationMs: 0,
+    };
   const started = Date.now(),
     directory = await mkdtemp(join(tmpdir(), "ase-run-")),
     name = `ase-test-${crypto.randomUUID()}`;

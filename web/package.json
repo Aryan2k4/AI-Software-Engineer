@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "tsx --test tests/*.test.ts",
     "runner": "tsx scripts/run-artifacts.ts",
+    "worker": "tsx scripts/execution-worker.ts",
     "db:push": "prisma db push",
     "postinstall": "prisma generate"
   },

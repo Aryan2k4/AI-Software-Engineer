@@ -1,7 +1,62 @@
 import { test, expect } from "@playwright/test";
 import { seed, demoOutput } from "../lib/domain";
-test.beforeEach(async ({page}, info)=>{
-  if(!info.title.startsWith('first visit')) await page.addInitScript(()=>localStorage.setItem('ase-guide-v1','dismissed'));
+test("execution panel queues tests and displays actual worker result", async ({
+  page,
+}) => {
+  const data = seed();
+  let queued = false;
+  await page.route("**/api/config", (r) =>
+    r.fulfill({
+      json: {
+        auth: true,
+        signedIn: true,
+        provider: "groq",
+        storage: "postgres",
+      },
+    }),
+  );
+  await page.route("**/api/workspace", (r) =>
+    r.fulfill({ json: { data, revision: 0 } }),
+  );
+  await page.route("**/api/executions**", async (r) => {
+    if (r.request().method() === "POST") {
+      queued = true;
+      await r.fulfill({ status: 202, json: { id: "job-1", status: "queued" } });
+    } else
+      await r.fulfill({
+        json: {
+          enabled: true,
+          jobs: queued
+            ? [
+                {
+                  id: "job-1",
+                  runId: "seed-0",
+                  status: "failed",
+                  result: {
+                    exitCode: 1,
+                    durationMs: 120,
+                    log: "Expected true but got false",
+                  },
+                },
+              ]
+            : [],
+        },
+      });
+  });
+  await page.goto("/#view=runs&project=sample-1");
+  await page.getByRole("button", { name: "Run tests in isolation" }).click();
+  await expect(page.getByText("Expected true but got false")).toBeVisible({
+    timeout: 10000,
+  });
+  await expect(
+    page.getByRole("button", { name: "Tests requested" }),
+  ).toBeDisabled();
+});
+test.beforeEach(async ({ page }, info) => {
+  if (!info.title.startsWith("first visit"))
+    await page.addInitScript(() =>
+      localStorage.setItem("ase-guide-v1", "dismissed"),
+    );
 });
 test("first visit guide dismisses persistently and Help reopens it", async ({
   page,
@@ -16,11 +71,17 @@ test("first visit guide dismisses persistently and Help reopens it", async ({
     page.getByRole("region", { name: "Getting started" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Help", exact: true }).click();
-  await expect(page.getByRole('dialog',{name:'Getting started'})).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog',{name:'Getting started'})).not.toBeVisible();
-  await expect(page.getByRole('button',{name:'Help',exact:true})).toBeFocused();
-  await page.getByRole('button',{name:'Help',exact:true}).click();
+  await expect(
+    page.getByRole("dialog", { name: "Getting started" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("dialog", { name: "Getting started" }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Help", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Help", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "Getting started" }),
   ).toBeVisible();
@@ -191,6 +252,19 @@ test("anonymous users cannot access account data or live inference", async ({
   request,
 }) => {
   expect((await request.get("/api/workspace")).status()).toBe(401);
+  expect((await request.get("/api/executions?projectId=test")).status()).toBe(
+    401,
+  );
+  expect(
+    (
+      await request.post("/api/executions", {
+        data: { projectId: "test", runId: "test" },
+      })
+    ).status(),
+  ).toBe(401);
+  expect(
+    (await request.post("/api/worker", { data: { action: "claim" } })).status(),
+  ).toBe(401);
   expect(
     (await request.post("/api/chat", { data: { question: "Hello" } })).status(),
   ).toBe(401);

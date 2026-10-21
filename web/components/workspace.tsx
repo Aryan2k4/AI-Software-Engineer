@@ -23,6 +23,7 @@ import {
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "./ui/button";
 import { ProjectAssistant } from "./project-assistant";
+import { ExecutionPanel } from "./execution-panel";
 import {
   applyRun,
   checkArtifacts,
@@ -303,7 +304,11 @@ export default function Workbench() {
         </a>
         <span className="edition">WORKSPACE / VOL. 03</span>
         <div className="top-actions">
-          <button ref={helpButton} className="btn btn-outline" onClick={() => setGuide(true)}>
+          <button
+            ref={helpButton}
+            className="btn btn-outline"
+            onClick={() => setGuide(true)}
+          >
             Help
           </button>
           <span className="mode-label">
@@ -379,106 +384,119 @@ export default function Workbench() {
         </div>
       </aside>
       <main className="main">
-        <dialog ref={guideDialog} className="help-dialog" aria-label="Getting started" onCancel={()=>setGuide(false)} onClose={()=>{setGuide(false);helpButton.current?.focus();}}>
-        {guide && (
-          <section
-            className="panel getting-started"
-            onClick={e=>{if((e.target as HTMLElement).closest('button')) setGuide(false);}}
-            aria-label="Getting started"
-          >
-            <div className="panel-top">
-              <h2>Start here. Build one useful thing.</h2>
-              <Button
-                variant="ghost"
-                onClick={() => {
+        <dialog
+          ref={guideDialog}
+          className="help-dialog"
+          aria-label="Getting started"
+          onCancel={() => setGuide(false)}
+          onClose={() => {
+            setGuide(false);
+            helpButton.current?.focus();
+          }}
+        >
+          {guide && (
+            <section
+              className="panel getting-started"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button"))
                   setGuide(false);
-                  localStorage.setItem("ase-guide-v1", "dismissed");
-                }}
-              >
-                Dismiss guide
-              </Button>
-            </div>
-            <p>
-              Live mode uses your account and Groq. Local demo uses templates
-              saved in this browser. Neither mode currently executes generated
-              tests or deploys your code.
-            </p>
-            <ol>
-              <li>
-                <b>Create or open a project.</b> Give it a clear name.{" "}
+              }}
+              aria-label="Getting started"
+            >
+              <div className="panel-top">
+                <h2>Start here. Build one useful thing.</h2>
                 <Button
                   variant="ghost"
-                  onClick={() => navigate("overview", "")}
+                  onClick={() => {
+                    setGuide(false);
+                    localStorage.setItem("ase-guide-v1", "dismissed");
+                  }}
                 >
-                  Open projects
+                  Dismiss guide
                 </Button>
-              </li>
-              <li>
-                <b>Set the context.</b> Describe your stack, constraints and
-                acceptance criteria.{" "}
-                <Button
-                  variant="ghost"
-                  disabled={!project}
-                  onClick={() => navigate("context")}
-                >
-                  Open project context
-                </Button>
-              </li>
-              <li>
-                <b>Request a small feature.</b> Example: “Create a
-                dependency-free JavaScript email validator with node:test
-                tests.”{" "}
-                <Button
-                  variant="ghost"
-                  disabled={!project}
-                  onClick={() => navigate("overview")}
-                >
-                  Open feature composer
-                </Button>
-              </li>
-              <li>
-                <b>Inspect the result.</b> Read the run review, then inspect
-                files and proposed changes. Structural checks do not mean
-                application tests passed.{" "}
-                <Button
-                  variant="ghost"
-                  disabled={!project}
-                  onClick={() => navigate("files")}
-                >
-                  Inspect files
-                </Button>
-              </li>
-              <li>
-                <b>Track your work.</b> Move tasks as you finish them. Download
-                and review code before running it in an isolated environment.
-                Never run unfamiliar generated code with secrets available.{" "}
-                <Button
-                  variant="ghost"
-                  disabled={!project}
-                  onClick={() => navigate("board")}
-                >
-                  Open task board
-                </Button>
-              </li>
-              <li>
-                <b>Ask for help.</b> The assistant explains code and next steps;
-                it cannot execute or deploy.{" "}
-                <Button
-                  variant="ghost"
-                  disabled={!project}
-                  onClick={() => navigate("assistant")}
-                >
-                  Ask the assistant
-                </Button>
-              </li>
-            </ol>
-            <p className="muted">
-              Project actions unlock after you open a project. Reopen this guide
-              anytime using Help. Never paste passwords or API keys into
-              prompts.
-            </p>
-          </section>
-        )}
+              </div>
+              <p>
+                Live mode uses your account and Groq. Local demo uses templates
+                saved in this browser. Neither mode currently executes generated
+                tests or deploys your code.
+              </p>
+              <ol>
+                <li>
+                  <b>Create or open a project.</b> Give it a clear name.{" "}
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate("overview", "")}
+                  >
+                    Open projects
+                  </Button>
+                </li>
+                <li>
+                  <b>Set the context.</b> Describe your stack, constraints and
+                  acceptance criteria.{" "}
+                  <Button
+                    variant="ghost"
+                    disabled={!project}
+                    onClick={() => navigate("context")}
+                  >
+                    Open project context
+                  </Button>
+                </li>
+                <li>
+                  <b>Request a small feature.</b> Example: “Create a
+                  dependency-free JavaScript email validator with node:test
+                  tests.”{" "}
+                  <Button
+                    variant="ghost"
+                    disabled={!project}
+                    onClick={() => navigate("overview")}
+                  >
+                    Open feature composer
+                  </Button>
+                </li>
+                <li>
+                  <b>Inspect the result.</b> Read the run review, then inspect
+                  files and proposed changes. Structural checks do not mean
+                  application tests passed.{" "}
+                  <Button
+                    variant="ghost"
+                    disabled={!project}
+                    onClick={() => navigate("files")}
+                  >
+                    Inspect files
+                  </Button>
+                </li>
+                <li>
+                  <b>Track your work.</b> Move tasks as you finish them.
+                  Download and review code before running it in an isolated
+                  environment. Never run unfamiliar generated code with secrets
+                  available.{" "}
+                  <Button
+                    variant="ghost"
+                    disabled={!project}
+                    onClick={() => navigate("board")}
+                  >
+                    Open task board
+                  </Button>
+                </li>
+                <li>
+                  <b>Ask for help.</b> The assistant explains code and next
+                  steps; it cannot execute or deploy.{" "}
+                  <Button
+                    variant="ghost"
+                    disabled={!project}
+                    onClick={() => navigate("assistant")}
+                  >
+                    Ask the assistant
+                  </Button>
+                </li>
+              </ol>
+              <p className="muted">
+                Project actions unlock after you open a project. Reopen this
+                guide anytime using Help. Never paste passwords or API keys into
+                prompts.
+              </p>
+            </section>
+          )}
         </dialog>
         <div className="breadcrumb">
           <span>Workspace</span>
@@ -795,6 +813,13 @@ export default function Workbench() {
             )}
             {view === "runs" && (
               <>
+                {run && config.signedIn && (
+                  <ExecutionPanel
+                    key={project.id + run.id}
+                    projectId={project.id}
+                    runId={run.id}
+                  />
+                )}
                 <div className="timeline">
                   {["Plan", "Implement", "Check", "Review"].map((step, i) => (
                     <div

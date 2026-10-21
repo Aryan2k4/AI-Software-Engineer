@@ -11,3 +11,19 @@ model Workspace {
   revision Int @default(0)
   updatedAt DateTime @updatedAt
 }
+
+model ExecutionJob {
+  id String @id @default(uuid())
+  ownerId String
+  projectId String
+  runId String
+  status String @default("queued")
+  files Json
+  result Json?
+  leaseToken String?
+  leaseUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([ownerId, projectId, runId])
+  @@index([status, createdAt])
+}

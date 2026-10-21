@@ -75,7 +75,7 @@ The `/api/config` endpoint reports configured modes, not end-to-end credential h
 
 ### Restricted local test runner
 
-The operator-only runner supports dependency-free Node tests in `tests/*.test.mjs`, `test/*.test.cjs`, or equivalent nested `.js` test paths. It is not yet connected to the hosted application's job queue or UI. Do not expose this CLI as a public execution service.
+The operator-only runner supports dependency-free Node tests in `tests/*.test.mjs`, `test/*.test.cjs`, or equivalent nested `.js` test paths. Signed-in operators can queue an immutable run snapshot from Agent runs. A separate worker polls the hosted control API and returns real logs. Do not expose the Docker daemon as a public execution service.
 
 From `web`, pull a Node image and pin its digest, then run an artifact JSON file containing `{ "files": [{ "path": "tests/example.test.mjs", "content": "..." }] }`:
 
@@ -88,6 +88,12 @@ npm test
 ```
 
 Each run uses a unique temporary directory and container; only those resources are cleaned up. No host secrets or Docker socket are mounted. The generated program runs non-root with network disabled, a read-only filesystem, 256 MB memory, one CPU, 64 PIDs, a 30-second limit and bounded captured logs. No dependencies are installed. Container isolation is defense-in-depth, not a guarantee against hostile public code. Use a dedicated VM for untrusted workloads.
+
+### Connect a worker
+
+Set `EXECUTION_OPERATOR_ID=github:<numeric-account-id>` on Vercel. Generate a random worker token; put its SHA-256 hex digest in Vercel as `WORKER_TOKEN_HASH` and keep the raw token only on the worker as `WORKER_TOKEN`. Configure `WORKSPACE_URL` and pinned `RUNNER_IMAGE` on the worker, then run `npm run worker` from web. No production database credential is required by the worker. Changing/removing the hash revokes access. Do not commit tokens.
+
+Apply the additive ExecutionJob schema before deploying. A job is unique per owner/project/run, atomically claimed, leased for 120 seconds and fenced against late completion. Expired jobs are marked expired on the next worker claim; they are not automatically executed twice. The worker polls every five seconds. Queued work waits while the worker is offline. This initial queue has no cancellation/retry UI or public multi-tenant execution; those remain incomplete. Only explicitly configured operator-owned jobs can be claimed.
 
 The root `docker-compose.yml` runs PostgreSQL and standalone Next.js. Create web/.env, start the database and apply the schema as above, then run `docker compose up --build web`. Runtime startup does not automatically apply schema changes. Default database credentials are local-development only.
 
@@ -117,4 +123,6 @@ Obsolete Vite/FastAPI sources, Supabase schema, old workflows and design notes w
 
 ## Remaining work
 
-Isolated code execution, real generated-code tests, durable rate-limited jobs, normalized run persistence, incremental diffs, repository synchronization and deployment integrations. Present this as an AI-assisted engineering workspace, not a completed autonomous software engineer.
+The operator-only queue now runs dependency-free Node tests in restricted Docker containers and persists actual results. Broader language/dependency support, an always-online dedicated worker, cancellation/retry controls, AI rate limits, normalized run persistence, incremental diffs, repository synchronization and deployment integrations remain incomplete. Present this as an AI-assisted engineering workspace, not a completed autonomous software engineer.
+
+To verify queue concurrency and lease fencing against a configured database, run `node --env-file=.env.production.local --import tsx scripts/verify-execution-queue.ts` from web. This opt-in check creates UUID-scoped fixtures and removes only those fixtures; it never changes saved workspaces.
