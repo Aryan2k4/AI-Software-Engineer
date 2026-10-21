@@ -9,7 +9,7 @@ async function main() {
   const token = randomUUID();
   process.env.EXECUTION_OPERATOR_ID = ownerId;
   process.env.WORKER_TOKEN_HASH = createHash("sha256").update(token).digest("hex");
-  const call = (body: unknown, credential = token) => POST(new Request("http://localhost/api/worker", {
+  const call = (body: unknown, credential: string = token) => POST(new Request("http://localhost/api/worker", {
     method: "POST", headers: { authorization: `Bearer ${credential}` }, body: JSON.stringify(body),
   }));
   try {
