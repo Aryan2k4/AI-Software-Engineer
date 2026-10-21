@@ -8,7 +8,30 @@ import {
   checkArtifacts,
   workspaceSchema,
   artifactSchema,
+  runSchema,
 } from "../lib/domain";
+test("Groq and legacy run modes survive serialization", () => {
+  for (const mode of ["groq", "openai", "ollama", "demo"]) {
+    const run = {
+      id: "test",
+      createdAt: new Date().toISOString(),
+      prompt: "Test prompt",
+      mode,
+      output: demoOutput("Test feature"),
+      checks: [],
+    };
+    const parsed = runSchema.parse(JSON.parse(JSON.stringify(run)));
+    const project = applyRun(newProject("Persistence", "Test"), parsed);
+    const restored = workspaceSchema.parse(
+      JSON.parse(JSON.stringify({ projects: [project] })),
+    );
+    assert.equal(restored.projects[0].runs[0].mode, mode);
+    assert.equal(
+      restored.projects[0].files[0].content,
+      run.output.files[0].content,
+    );
+  }
+});
 test("seeded projects have independent accessible artifacts", () => {
   const data = seed();
   assert.equal(new Set(data.projects.map((p) => p.id)).size, 3);

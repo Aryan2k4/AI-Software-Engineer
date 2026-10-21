@@ -1,4 +1,73 @@
 import { test, expect } from "@playwright/test";
+import { seed, demoOutput } from "../lib/domain";
+for (const succeeds of [true, false]) {
+  test(`Groq live ${succeeds ? "success persists artifacts" : "quota failure does not create demo run"}`, async ({
+    page,
+  }) => {
+    let saved = seed();
+    await page.route("**/api/config", (r) =>
+      r.fulfill({
+        json: {
+          auth: true,
+          signedIn: true,
+          provider: "groq",
+          storage: "postgres",
+        },
+      }),
+    );
+    await page.route("**/api/workspace", async (r) => {
+      if (r.request().method() === "PUT") {
+        saved = r.request().postDataJSON().data;
+        await r.fulfill({ json: { revision: 1 } });
+      } else await r.fulfill({ json: { data: saved, revision: 0 } });
+    });
+    await page.route("**/api/run", (r) =>
+      r.fulfill(
+        succeeds
+          ? {
+              json: {
+                mode: "groq",
+                output: {
+                  ...demoOutput("Generated validation"),
+                  summary: "Verified live transport fixture",
+                },
+                checks: [],
+              },
+            }
+          : {
+              status: 429,
+              json: { error: "Groq quota reached. Wait before retrying." },
+            },
+      ),
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: /PROJECT \/ 01/ }).click();
+    await page
+      .getByLabel("Feature request")
+      .fill("Implement a small validation function");
+    await page.getByRole("button", { name: "Start engineering run" }).click();
+    if (succeeds) {
+      await expect(
+        page.getByText("Model artifacts saved.", { exact: false }),
+      ).toBeVisible();
+      await expect.poll(() => saved.projects[0].runs[0].mode).toBe("groq");
+      await page.reload();
+      await expect(
+        page
+          .getByText("Verified live transport fixture", { exact: false })
+          .first(),
+      ).toBeVisible();
+    } else {
+      await expect(
+        page.getByText("Groq quota reached. Wait before retrying."),
+      ).toBeVisible();
+      expect(saved.projects[0].runs.length).toBe(1);
+      await expect(
+        page.getByText("Demo artifacts created.", { exact: false }),
+      ).toHaveCount(0);
+    }
+  });
+}
 test("projects and every tool open, edits survive reload", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /PROJECT \/ 01/ }).click();

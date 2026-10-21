@@ -27,7 +27,7 @@ export const runSchema = z.object({
   id: z.string(),
   prompt: z.string().max(6000),
   createdAt: z.string(),
-  mode: z.enum(["demo", "openai", "ollama"]),
+  mode: z.enum(["demo", "openai", "ollama", "groq"]),
   output: outputSchema,
   checks: z.array(
     z.object({ name: z.string(), passed: z.boolean(), detail: z.string() }),

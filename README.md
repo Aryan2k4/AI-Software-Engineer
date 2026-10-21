@@ -9,7 +9,7 @@ A neo-brutalist engineering workspace built with Next.js, TypeScript, Prisma and
 - Project dashboard and distinct project workspaces.
 - GitHub sign-in through NextAuth; account-scoped PostgreSQL persistence with optimistic revision checks.
 - Task board, file explorer, downloads, change explanations, saved context and run history.
-- Server-side OpenAI or Ollama generation with bounded, schema-validated inputs and outputs.
+- Server-side Groq, OpenAI or Ollama generation with bounded, schema-validated inputs and outputs.
 - Explicitly labeled browser-local demo when live generation is unavailable.
 
 Production uses Neon (managed PostgreSQL) and Vercel. Supabase is not a dependency. Data in the previous Supabase service is not automatically migrated or deleted.
@@ -40,6 +40,14 @@ For account mode configure `DATABASE_URL`, `GITHUB_ID`, `GITHUB_SECRET`, `NEXTAU
 For live generation set `OPENAI_API_KEY` and optionally `OPENAI_MODEL`. Alternatively set `AI_PROVIDER=ollama`, `OLLAMA_BASE_URL` and `OLLAMA_MODEL` to a server reachable from Next.js. Localhost on Vercel is not your laptop. Model inference and hosting may incur charges even with a free-tier database.
 
 ## Vercel deployment
+
+### Groq (recommended hosted setup)
+
+Set `AI_PROVIDER=groq`, `GROQ_API_KEY` as a Production secret, and optionally `GROQ_MODEL=openai/gpt-oss-120b`. The model is served by **Groq**; it does not require an OpenAI key. The selected default appears in [Groq's free-plan limits](https://console.groq.com/docs/rate-limits); your account quotas and billing status still determine availability/cost. No automatic provider fallback or billing upgrade is performed. Redeploy after changing variables.
+
+The adapter requests JSON output, validates the artifact schema, rejects truncated/duplicate/empty artifacts, bounds response size and time, and reports quota/credential failures separately. These checks improve reliability, not proof of code correctness. Model context and generated code are sent to the selected hosted provider. Do not submit secrets.
+
+Quality evaluation fixtures live in `web/tests/fixtures/quality-cases.json`. Compare the same six briefs/model/settings before and after workflow changes, recording first-pass test success, repair success, token usage and latency. Execution-based scores and accuracy improvements are **not yet measured**; they require the isolated worker. Use additional held-out tasks for final evaluation.
 
 1. Import this repository with **Root Directory: web** and the Next.js preset.
 2. Connect Neon PostgreSQL and supply `DATABASE_URL`.
