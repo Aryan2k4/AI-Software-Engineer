@@ -1015,3 +1015,6 @@ select {
 .getting-started ol { padding-left: 24px; }
 .getting-started li { margin: 14px 0; line-height: 1.7; }
 .getting-started .btn { white-space: normal; }
+.help-dialog { color: var(--text); background: var(--surface); border: 2px solid var(--accent); padding: 0; width: min(820px, calc(100vw - 32px)); max-height: 85dvh; margin: auto; overflow: auto; }
+.help-dialog::backdrop { background: rgb(0 0 0 / 75%); }
+.help-dialog .getting-started { margin: 0; }

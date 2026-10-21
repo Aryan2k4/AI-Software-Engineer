@@ -62,6 +62,12 @@ const nav = [
 const storageKey = "ase-workspace-v3";
 export default function Workbench() {
   const [guide, setGuide] = useState(false);
+  const guideDialog = useRef<HTMLDialogElement>(null);
+  const helpButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (guide) guideDialog.current?.showModal();
+    else guideDialog.current?.close();
+  }, [guide]);
   const [data, setData] = useState<Workspace>({ projects: [] }),
     [ready, setReady] = useState(false),
     [config, setConfig] = useState<Config>({
@@ -297,9 +303,9 @@ export default function Workbench() {
         </a>
         <span className="edition">WORKSPACE / VOL. 03</span>
         <div className="top-actions">
-          <Button variant="outline" onClick={() => setGuide(true)}>
+          <button ref={helpButton} className="btn btn-outline" onClick={() => setGuide(true)}>
             Help
-          </Button>
+          </button>
           <span className="mode-label">
             {config.signedIn ? "CONNECTED WORKSPACE" : "LOCAL DEMO"}
           </span>
@@ -373,9 +379,11 @@ export default function Workbench() {
         </div>
       </aside>
       <main className="main">
-        {ready && guide && (
+        <dialog ref={guideDialog} className="help-dialog" aria-label="Getting started" onCancel={()=>setGuide(false)} onClose={()=>{setGuide(false);helpButton.current?.focus();}}>
+        {guide && (
           <section
             className="panel getting-started"
+            onClick={e=>{if((e.target as HTMLElement).closest('button')) setGuide(false);}}
             aria-label="Getting started"
           >
             <div className="panel-top">
@@ -471,6 +479,7 @@ export default function Workbench() {
             </p>
           </section>
         )}
+        </dialog>
         <div className="breadcrumb">
           <span>Workspace</span>
           <span>/</span>

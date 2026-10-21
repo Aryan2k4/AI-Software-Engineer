@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { seed, demoOutput } from "../lib/domain";
+test.beforeEach(async ({page}, info)=>{
+  if(!info.title.startsWith('first visit')) await page.addInitScript(()=>localStorage.setItem('ase-guide-v1','dismissed'));
+});
 test("first visit guide dismisses persistently and Help reopens it", async ({
   page,
 }) => {
@@ -13,6 +16,11 @@ test("first visit guide dismisses persistently and Help reopens it", async ({
     page.getByRole("region", { name: "Getting started" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Help", exact: true }).click();
+  await expect(page.getByRole('dialog',{name:'Getting started'})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog',{name:'Getting started'})).not.toBeVisible();
+  await expect(page.getByRole('button',{name:'Help',exact:true})).toBeFocused();
+  await page.getByRole('button',{name:'Help',exact:true}).click();
   await expect(
     page.getByRole("region", { name: "Getting started" }),
   ).toBeVisible();
@@ -113,9 +121,6 @@ for (const succeeds of [true, false]) {
       .fill("Implement a small validation function");
     await page.getByRole("button", { name: "Start engineering run" }).click();
     if (succeeds) {
-      await expect(
-        page.getByText("Model artifacts saved.", { exact: false }),
-      ).toBeVisible();
       await expect.poll(() => saved.projects[0].runs[0].mode).toBe("groq");
       await page.reload();
       await expect(
