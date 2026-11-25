@@ -59,6 +59,22 @@ test.beforeEach(async ({ page }, info) => {
     );
 });
 
+test("backup import restores copies and project ZIP downloads", async ({ page }) => {
+  await page.goto("/#view=settings");
+  await page.getByLabel("Import workspace backup").setInputFiles({ name: "backup.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(seed())) });
+  await page.getByRole("button", { name: /All projects 6/ }).click();
+  await page.getByRole("button", { name: /PROJECT \/ 04/ }).click();
+  await expect(page.getByRole("heading", { name: "Issue desk (imported)", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Repository", exact: true }).click();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download project ZIP" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.zip$/);
+  expect(await download.failure()).toBeNull();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Issue desk (imported)", exact: true })).toBeVisible();
+});
+
 test("offline queued execution can be cancelled and retried", async ({ page }) => {
   const data = seed();
   let status = "queued";

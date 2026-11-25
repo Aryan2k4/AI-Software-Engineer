@@ -9,6 +9,7 @@ A neo-brutalist engineering workspace built with Next.js, TypeScript, Prisma and
 - Project dashboard and distinct project workspaces.
 - GitHub sign-in through NextAuth; account-scoped PostgreSQL persistence with optimistic revision checks.
 - Task board, file explorer, downloads, change explanations, saved context and run history.
+- Project ZIP downloads preserve folders; JSON backup import restores projects as separate copies without replacing existing work.
 - Server-side Groq, OpenAI or Ollama generation with bounded, schema-validated inputs and outputs.
 - Explicitly labeled browser-local demo when live generation is unavailable.
 - First-visit guide with real navigation actions; dismiss it and reopen using Help.
@@ -33,6 +34,12 @@ Production uses Neon (managed PostgreSQL) and Vercel. Supabase is not a dependen
 Generation uses one model request followed by artifact validation. The timeline is not independent autonomous workers. Structural checks alone do not establish program correctness. The connected operator-only Docker worker executes dependency-free Node tests and persists real results. It does not support Jest/package installation, synchronize repositories, or deploy generated applications. Live AI generation requires a configured provider and authenticated account; database setup alone does not enable it.
 
 ## Local setup
+
+### Move or restore your work
+
+In Settings, use **Export workspace** to save a JSON backup. **Import workspace backup** accepts an exported file up to 2 MB and adds copies with fresh project/run/task/message identities. Existing projects remain unchanged, and execution results are not copied. The combined workspace must remain under 50 projects and 2 MB. Backups contain your code and conversation history: store them privately.
+
+In Repository, **Download project ZIP** exports all current files with their relative paths intact. Unsafe paths and case-insensitive duplicates are rejected. Downloading does not execute code, install dependencies or deploy anything. Review the files before running them.
 
 Use Node.js 22+ and Docker for local PostgreSQL.
 

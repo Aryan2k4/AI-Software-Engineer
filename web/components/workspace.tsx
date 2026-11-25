@@ -25,6 +25,7 @@ import { Button } from "./ui/button";
 import { ProjectAssistant } from "./project-assistant";
 import { ExecutionPanel } from "./execution-panel";
 import { previousArtifact, lineChanges } from "@/lib/changes";
+import { importWorkspace, projectZip } from "@/lib/portability";
 import {
   applyRun,
   checkArtifacts,
@@ -288,7 +289,7 @@ export default function Workbench() {
       controller.current = null;
     }
   }
-  function download(content: string, filename: string, type = "text/plain") {
+  function download(content: string | Uint8Array<ArrayBuffer>, filename: string, type = "text/plain") {
     const url = URL.createObjectURL(new Blob([content], { type }));
     const a = document.createElement("a");
     a.href = url;
@@ -588,6 +589,20 @@ export default function Workbench() {
                 <Download size={16} />
                 Export workspace
               </Button>
+              <h3>Restore a workspace backup</h3>
+              <p>Choose an exported JSON backup (up to 2 MB). Projects are added as new copies; existing work is never replaced. Test execution results are not imported.</p>
+              <input type="file" accept=".json,application/json" aria-label="Import workspace backup" disabled={saving || !loaded.current} onChange={async (event) => {
+                const input = event.currentTarget;
+                const backup = input.files?.[0];
+                if (!backup) return;
+                try {
+                  if (backup.size > 2_000_000) throw new Error("Backup exceeds 2 MB.");
+                  const text = await backup.text();
+                  const next = importWorkspace(dataRef.current, text);
+                  commit(next);
+                } catch (e) { setError(e instanceof Error ? e.message : "Could not import backup."); }
+                finally { input.value = ""; }
+              }} />
             </section>
             <section className="panel">
               <h2>About checks and deployment</h2>
@@ -930,6 +945,11 @@ export default function Workbench() {
               <section className="panel">
                 <div className="panel-top">
                   <h2>Working files</h2>
+                  <Button variant="outline" disabled={!project.files.length} onClick={() => {
+                    try {
+                      download(projectZip(project.files), `${project.name.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "project"}.zip`, "application/zip");
+                    } catch (e) { setError(e instanceof Error ? e.message : "Could not export project."); }
+                  }}>Download project ZIP</Button>
                   <Button
                     variant="outline"
                     disabled={!currentFile}
