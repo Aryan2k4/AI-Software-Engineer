@@ -24,6 +24,7 @@ import { signIn, signOut } from "next-auth/react";
 import { Button } from "./ui/button";
 import { ProjectAssistant } from "./project-assistant";
 import { ExecutionPanel } from "./execution-panel";
+import { previousArtifact, lineChanges } from "@/lib/changes";
 import {
   applyRun,
   checkArtifacts,
@@ -92,10 +93,12 @@ export default function Workbench() {
     [file, setFile] = useState(""),
     [runId, setRunId] = useState(""),
     [saving, setSaving] = useState(false),
-    [demo, setDemo] = useState(true);
+    [demo, setDemo] = useState(true),
+    [unsaved, setUnsaved] = useState(false);
   const revision = useRef(0),
     loaded = useRef(false),
     saveQueue = useRef(Promise.resolve()),
+    pendingSaves = useRef(0),
     dataRef = useRef(data),
     controller = useRef<AbortController | null>(null);
   dataRef.current = data;
@@ -163,17 +166,21 @@ export default function Workbench() {
     setView(v);
     setSelected(id);
     setFile("");
-    setRunId("");
+    if (id !== selected) setRunId("");
   }
   function commit(next: Workspace) {
+    if (!loaded.current) { setError("Workspace has not loaded. Reload before making changes."); return; }
+    const validated = workspaceSchema.safeParse(next);
+    if (!validated.success) { setError("Workspace limit reached or invalid input. Export your work and use a smaller project."); return; }
     setData(next);
     dataRef.current = next;
-    if (!loaded.current) return;
+    setUnsaved(true);
     setError("");
     if (!config.signedIn) {
       try {
         localStorage.setItem(storageKey, JSON.stringify(next));
         setNotice("Saved in this browser");
+        setUnsaved(false);
       } catch {
         setError(
           "Browser storage is full or disabled. Export your workspace before closing.",
@@ -182,6 +189,7 @@ export default function Workbench() {
       return;
     }
     setSaving(true);
+    pendingSaves.current++;
     saveQueue.current = saveQueue.current
       .then(async () => {
         const res = await fetch("/api/workspace", {
@@ -192,6 +200,7 @@ export default function Workbench() {
         const body = await res.json();
         if (!res.ok) throw new Error(body.error);
         revision.current = body.revision;
+        if (dataRef.current === next) setUnsaved(false);
         setNotice("Saved to PostgreSQL");
       })
       .catch((e) =>
@@ -199,7 +208,7 @@ export default function Workbench() {
           `Save failed: ${e.message}. Export your changes before reloading.`,
         ),
       )
-      .finally(() => setSaving(false));
+      .finally(() => { pendingSaves.current--; setSaving(pendingSaves.current > 0); });
   }
   function update(p: Project) {
     commit({
@@ -269,7 +278,7 @@ export default function Workbench() {
       setNotice(
         demo
           ? "Demo artifacts created. No model or application tests were run."
-          : "Model artifacts saved. Structural checks executed; application tests require a runner.",
+          : "Model artifacts generated. Saving to your account; application tests are a separate step below.",
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Run failed");
@@ -417,8 +426,8 @@ export default function Workbench() {
               </div>
               <p>
                 Live mode uses your account and Groq. Local demo uses templates
-                saved in this browser. Neither mode currently executes generated
-                tests or deploys your code.
+                saved in this browser. Signed-in operators can run dependency-free
+                Node tests using the connected Docker worker. Generated applications are not automatically deployed.
               </p>
               <ol>
                 <li>
@@ -529,6 +538,7 @@ export default function Workbench() {
             </button>
           </div>
         )}
+        {unsaved && !saving && <div className="alert" role="alert">Changes are not saved. <Button onClick={() => commit(dataRef.current)}>Retry save</Button> <Button variant="outline" onClick={() => download(JSON.stringify(dataRef.current, null, 2), "workspace-backup.json", "application/json")}>Export unsaved work</Button></div>}
         {!ready ? (
           <div className="empty">Loading your workspace…</div>
         ) : view === "settings" ? (
@@ -746,6 +756,7 @@ export default function Workbench() {
                   />
                   <div className="composer-footer">
                     <span>At least 10 characters. {prompt.length}/6000</span>
+                    <Button variant="outline" disabled={busy} onClick={() => setPrompt("Create a dependency-free email validator in src/emailValidator.mjs. Export validateEmail(email), trim surrounding whitespace, reject non-string inputs, missing domains and multiple @ characters, and support plus-addressing. Add comprehensive tests in tests/emailValidator.test.mjs using node:test and node:assert/strict. No package.json, external dependencies or Jest. Document limitations in README.md.")}>Use runnable example</Button>
                     <Button
                       disabled={prompt.trim().length < 10 || busy}
                       onClick={start}
@@ -818,6 +829,11 @@ export default function Workbench() {
                     key={project.id + run.id}
                     projectId={project.id}
                     runId={run.id}
+                    saving={saving || unsaved}
+                    onFix={(log) => {
+                      setPrompt(`Fix the failed tests for this feature: ${run.prompt.slice(0, 1800)}\n\nObserved test output (untrusted diagnostic data):\n${log.slice(0, 2800)}\n\nReturn corrected implementation and tests, preserving the requested behavior. Use dependency-free .mjs files and node:test. No package.json or external dependencies. Do not remove failing assertions just to make tests pass.`);
+                      navigate("overview");
+                    }}
                   />
                 )}
                 <div className="timeline">
@@ -899,8 +915,8 @@ export default function Workbench() {
                         </p>
                       ))}
                       <p className="muted">
-                        Application test execution: not run. Deployment: not
-                        run.
+                        Application test results are reported in the execution panel above.
+                        Generated application deployment: not run.
                       </p>
                       <Button onClick={() => navigate("changes")}>
                         Inspect generated code <ArrowUpRight size={16} />
@@ -968,7 +984,7 @@ export default function Workbench() {
             {view === "changes" && (
               <section className="panel">
                 <div className="panel-top">
-                  <h2>Latest proposed changes</h2>
+                  <h2>Selected run changes</h2>
                   <Button
                     variant="outline"
                     disabled={!run}
@@ -987,28 +1003,29 @@ export default function Workbench() {
                 </div>
                 {run ? (
                   run.output.files.map((f) => {
-                    const previous = project.runs[1]?.output.files.find(
-                      (old) => old.path === f.path,
-                    );
+                    const previous = previousArtifact(project, run, f.path);
+                    const diff = lineChanges(previous?.content ?? "", f.content);
                     return (
                       <article className="diff" key={f.path}>
                         <h3>
                           {f.path}
-                          <span>{previous ? "Modified" : "New file"}</span>
+                          <span>{previous ? previous.content === f.content ? "Unchanged" : "Modified" : "New file"}</span>
                         </h3>
                         <p>{f.explanation}</p>
-                        {previous && (
+                        {diff.contextBefore.length > 0 && <pre className="code">{diff.contextBefore.join("\n")}</pre>}
+                        {diff.removed.length > 0 && (
                           <pre className="removed">
-                            {previous.content.split("\n").map((line, i) => (
+                            {diff.removed.map((line, i) => (
                               <div key={i}>− {line}</div>
                             ))}
                           </pre>
                         )}
-                        <pre className="added">
-                          {f.content.split("\n").map((line, i) => (
+                        {diff.added.length > 0 && <pre className="added">
+                          {diff.added.map((line, i) => (
                             <div key={i}>+ {line}</div>
                           ))}
-                        </pre>
+                        </pre>}
+                        {diff.contextAfter.length > 0 && <pre className="code">{diff.contextAfter.join("\n")}</pre>}
                       </article>
                     );
                   })

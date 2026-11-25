@@ -58,6 +58,45 @@ test.beforeEach(async ({ page }, info) => {
       localStorage.setItem("ase-guide-v1", "dismissed"),
     );
 });
+
+test("offline queued execution can be cancelled and retried", async ({ page }) => {
+  const data = seed();
+  let status = "queued";
+  await page.route("**/api/config", (r) => r.fulfill({ json: { auth: true, signedIn: true, provider: "groq", storage: "postgres" } }));
+  await page.route("**/api/workspace", (r) => r.fulfill({ json: { data, revision: 0 } }));
+  await page.route("**/api/executions**", async (r) => {
+    if (r.request().method() === "PATCH") {
+      status = r.request().postDataJSON().action === "cancel" ? "cancelled" : "queued";
+      await r.fulfill({ json: { status } });
+    } else await r.fulfill({ json: { enabled: true, worker: { online: false, lastSeenAt: null }, jobs: [{ id: "job", runId: "seed-0", status }] } });
+  });
+  await page.goto("/#view=runs&project=sample-1");
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel queued tests" }).click();
+  await expect(page.getByText("Cancelled before execution.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Retry tests" }).click();
+  await expect(page.getByRole("button", { name: "Cancel queued tests" })).toBeVisible();
+  await expect(page.getByText("Application test execution: not run.", { exact: false })).toHaveCount(0);
+});
+
+test("failed save remains recoverable and retry saves current changes", async ({ page }) => {
+  const data = seed();
+  let attempts = 0;
+  await page.route("**/api/config", (r) => r.fulfill({ json: { auth: true, signedIn: true, provider: "groq", storage: "postgres" } }));
+  await page.route("**/api/workspace", async (r) => {
+    if (r.request().method() === "PUT") {
+      attempts++;
+      await r.fulfill(attempts === 1 ? { status: 503, json: { error: "Temporary database outage" } } : { json: { revision: 1 } });
+    } else await r.fulfill({ json: { data, revision: 0 } });
+  });
+  await page.goto("/#view=context&project=sample-1");
+  await page.getByLabel("Project context", { exact: true }).fill("Use Node built-in tests");
+  await page.getByRole("button", { name: "Save context" }).click();
+  await expect(page.getByRole("button", { name: "Export unsaved work" })).toBeVisible();
+  await page.getByRole("button", { name: "Retry save" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved to PostgreSQL" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export unsaved work" })).toHaveCount(0);
+});
 test("first visit guide dismisses persistently and Help reopens it", async ({
   page,
 }) => {
@@ -208,7 +247,7 @@ test("projects and every tool open, edits survive reload", async ({ page }) => {
   ).toBeVisible();
   for (const [tab, heading] of [
     ["Repository", "Working files"],
-    ["Changes", "Latest proposed changes"],
+    ["Changes", "Selected run changes"],
     ["Task board", "Backlog"],
     ["Project context", "Project memory"],
     ["Agent runs", "Run history"],
@@ -252,6 +291,7 @@ test("anonymous users cannot access account data or live inference", async ({
   request,
 }) => {
   expect((await request.get("/api/workspace")).status()).toBe(401);
+  expect((await request.patch("/api/executions", { data: { action: "retry", id: "test" } })).status()).toBe(401);
   expect((await request.get("/api/executions?projectId=test")).status()).toBe(
     401,
   );

@@ -27,3 +27,15 @@ model ExecutionJob {
   @@unique([ownerId, projectId, runId])
   @@index([status, createdAt])
 }
+
+model WorkerPresence {
+  ownerId String @id
+  lastSeenAt DateTime
+}
+
+model AiUsage {
+  key String @id
+  count Int @default(0)
+  expiresAt DateTime
+  @@index([expiresAt])
+}

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { workerAuthorized } from "@/lib/execution";
+import { expireJobs } from "@/lib/execution-jobs";
 const resultSchema = z.object({
   status: z.enum(["passed", "failed", "timeout", "unavailable"]),
   exitCode: z.number().int().nullable(),
@@ -28,15 +29,12 @@ export async function POST(request: Request) {
           { error: "Operator not configured" },
           { status: 503 },
         );
-      // Expired leases terminate instead of executing potentially non-idempotent code twice.
-      await db.executionJob.updateMany({
-        where: {
-          ownerId: operator,
-          status: "running",
-          leaseUntil: { lt: new Date() },
-        },
-        data: { status: "expired", leaseToken: null },
+      await db.workerPresence.upsert({
+        where: { ownerId: operator },
+        create: { ownerId: operator, lastSeenAt: new Date() },
+        update: { lastSeenAt: new Date() },
       });
+      await expireJobs(operator);
       const candidate = await db.executionJob.findFirst({
         where: { ownerId: operator, status: "queued" },
         orderBy: { createdAt: "asc" },

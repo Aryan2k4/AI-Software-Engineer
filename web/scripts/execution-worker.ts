@@ -26,12 +26,14 @@ async function call(body: unknown) {
   return res.json();
 }
 async function main() {
+  let connected = false;
   console.log(
     "Execution worker started. Only configured operator jobs are accepted.",
   );
   do {
     try {
       const { job } = await call({ action: "claim" });
+      if (!connected) { console.log("Connected to workspace. Waiting for queued tests."); connected = true; }
       if (job) {
         let result;
         try {
@@ -53,6 +55,7 @@ async function main() {
         console.log(`Job ${job.id}: ${result.status}`);
       }
     } catch (e) {
+      connected = false;
       console.error(e instanceof Error ? e.message : "Worker failed");
     }
     if (process.argv.includes("--once")) break;

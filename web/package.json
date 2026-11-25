@@ -13,12 +13,12 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "next": "16.4.2",
+    "next": "16.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "next-auth": "4.24.15",
     "@prisma/client": "6.19.3",
-    "zod": "^3.25.0",
+    "zod": "4.6.7",
     "lucide-react": "^0.468.0",
     "@radix-ui/react-slot": "^1.1.0",
     "class-variance-authority": "^0.7.1",
@@ -27,6 +27,12 @@
     "tailwindcss": "^4.1.0",
     "@tailwindcss/postcss": "^4.1.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2",
+      "effect": "3.22.1"
+    }
   },
   "devDependencies": {
     "prisma": "6.19.3",

@@ -3,6 +3,7 @@ import { owner } from "@/lib/auth";
 import { sameOrigin } from "@/lib/request";
 import { resolveProvider } from "@/lib/ai/config";
 import { chatGroq, ProviderError } from "@/lib/ai/groq";
+import { takeAiQuota } from "@/lib/ai/quota";
 export const maxDuration = 120;
 const schema = z.object({
   question: z.string().trim().min(1).max(4000),
@@ -24,7 +25,8 @@ const schema = z.object({
 export async function POST(request: Request) {
   if (!sameOrigin(request))
     return Response.json({ error: "Invalid origin" }, { status: 403 });
-  if (!(await owner()))
+  const userId = await owner();
+  if (!userId)
     return Response.json(
       { error: "Sign in to use the assistant." },
       { status: 401 },
@@ -46,6 +48,8 @@ export async function POST(request: Request) {
     if (!parsed.success)
       return Response.json({ error: "Invalid chat request." }, { status: 400 });
     const { question, context, files, messages } = parsed.data;
+    const quota = await takeAiQuota(userId);
+    if (!quota.allowed) return Response.json({ error: "Hourly workspace AI limit reached (30 requests). Try again later." }, { status: 429, headers: { "Retry-After": String(quota.retryAfter) } });
     const reply = await chatGroq(
       { prompt: JSON.stringify({ question, messages }), context, files },
       {

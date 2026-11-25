@@ -21,15 +21,16 @@ A neo-brutalist engineering workspace built with Next.js, TypeScript, Prisma and
 3. Request one small feature from Overview. Inspect the specification and review under Agent runs.
 4. Read generated files in Repository and proposed changes in Changes. Structural checks are not executed tests.
 5. Move tasks on the Task board as you complete them. Review downloaded code before executing it in an isolated environment.
+   For supported Node projects, open Agent runs and use **Run tests in isolation**. Worker status shows whether the local worker is connected. A failed test can populate a new feature request with **Prepare fix request**; review the request before generating a repair. Use **Use runnable example** in the feature composer for a supported starting point.
 6. Open Assistant for explanations. It sends the question, saved context, eight recent message excerpts and up to five file excerpts to Groq. It does not execute code, edit files or deploy. Never submit secrets.
 
-Assistant conversations use the existing project message storage. Live chat requires sign-in and a configured Groq provider; there are no fabricated demo chat responses. No production per-user quota enforcement exists yet, so restrict account access before sharing a provider-funded deployment widely.
+Assistant conversations use the existing project message storage. Live chat requires sign-in and a configured Groq provider; there are no fabricated demo chat responses. Generation and chat share a database-backed limit of 30 requests per account per UTC hour. Provider quotas still apply; this is not a guarantee of free inference or a global spending cap.
 
 Production uses Neon (managed PostgreSQL) and Vercel. Supabase is not a dependency. Data in the previous Supabase service is not automatically migrated or deleted.
 
 ## Honest boundaries
 
-Generation uses one model request followed by artifact validation. The timeline is not independent autonomous workers. Checks validate artifact structure, not generated program correctness. This version does **not** execute generated code, run its tests, synchronize repositories, or deploy generated applications. Live AI generation requires a configured provider and authenticated account; database setup alone does not enable it.
+Generation uses one model request followed by artifact validation. The timeline is not independent autonomous workers. Structural checks alone do not establish program correctness. The connected operator-only Docker worker executes dependency-free Node tests and persists real results. It does not support Jest/package installation, synchronize repositories, or deploy generated applications. Live AI generation requires a configured provider and authenticated account; database setup alone does not enable it.
 
 ## Local setup
 
@@ -93,7 +94,9 @@ Each run uses a unique temporary directory and container; only those resources a
 
 Set `EXECUTION_OPERATOR_ID=github:<numeric-account-id>` on Vercel. Generate a random worker token; put its SHA-256 hex digest in Vercel as `WORKER_TOKEN_HASH` and keep the raw token only on the worker as `WORKER_TOKEN`. Configure `WORKSPACE_URL` and pinned `RUNNER_IMAGE` on the worker, then run `npm run worker` from web. No production database credential is required by the worker. Changing/removing the hash revokes access. Do not commit tokens.
 
-Apply the additive ExecutionJob schema before deploying. A job is unique per owner/project/run, atomically claimed, leased for 120 seconds and fenced against late completion. Expired jobs are marked expired on the next worker claim; they are not automatically executed twice. The worker polls every five seconds. Queued work waits while the worker is offline. This initial queue has no cancellation/retry UI or public multi-tenant execution; those remain incomplete. Only explicitly configured operator-owned jobs can be claimed.
+Apply the additive Prisma schema before deploying. A job is unique per owner/project/run, atomically claimed, leased for 120 seconds and fenced against late completion. Expired jobs are detected both when reading the execution panel and when workers claim work. They are never automatically executed twice. The worker polls every five seconds and the panel reports offline after 90 seconds without a connection. Queued work waits while the worker is offline. Operators can cancel queued jobs or explicitly retry failed, timed-out, unavailable, expired or cancelled jobs. Retry retains the original snapshot and replaces the last result; it does not modify source files. Running jobs finish or time out and cannot be cancelled from the UI. Only explicitly configured operator-owned jobs can be claimed.
+
+Keep Docker and the worker terminal open for local execution. The Vercel website remains online independently, but your computer is not an always-on execution host. Worker startup now prints a separate connected message only after the first successful server response. Do not expose the Docker socket or place provider credentials inside generated containers.
 
 The root `docker-compose.yml` runs PostgreSQL and standalone Next.js. Create web/.env, start the database and apply the schema as above, then run `docker compose up --build web`. Runtime startup does not automatically apply schema changes. Default database credentials are local-development only.
 
@@ -110,6 +113,8 @@ npx playwright test
 
 GitHub Actions runs domain tests, production compilation/type checks and browser tests. Browser coverage includes navigation, local generation, task/context persistence and anonymous API denial; it does not validate production OAuth or model credentials.
 
+CI also checks dependency advisories and database-backed queue concurrency, retries, cancellation, lease fencing and rate limits against a disposable PostgreSQL service. Next.js is pinned to 16.4.6 and Zod to 4.6.7. Prisma 6's configuration dependencies are overridden to patched `deepmerge-ts` 8.0.2 and `effect` 3.22.1; generation, build and database checks must continue to pass when updating these pins.
+
 ## Structure
 
 - `web/app`: application entry points and authenticated API routes.
@@ -123,6 +128,6 @@ Obsolete Vite/FastAPI sources, Supabase schema, old workflows and design notes w
 
 ## Remaining work
 
-The operator-only queue now runs dependency-free Node tests in restricted Docker containers and persists actual results. Broader language/dependency support, an always-online dedicated worker, cancellation/retry controls, AI rate limits, normalized run persistence, incremental diffs, repository synchronization and deployment integrations remain incomplete. Present this as an AI-assisted engineering workspace, not a completed autonomous software engineer.
+The operator-only queue runs dependency-free Node tests in restricted Docker containers and persists actual results. Worker status, queued cancellation, explicit retries, per-account AI limits, save recovery and historical file comparison are implemented. Broader language/dependency support, an always-online dedicated worker, normalized run persistence, repository synchronization and generated-application deployment integrations remain outside this release. Present this as an AI-assisted engineering workspace, not a completed autonomous software engineer.
 
 To verify queue concurrency and lease fencing against a configured database, run `node --env-file=.env.production.local --import tsx scripts/verify-execution-queue.ts` from web. This opt-in check creates UUID-scoped fixtures and removes only those fixtures; it never changes saved workspaces.
